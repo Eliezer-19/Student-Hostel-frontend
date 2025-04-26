@@ -1,7 +1,7 @@
 // frontend/javascript/script.js
 
 //–––––––––––––––––––––––––––––
-// point all API calls at backend
+// point all API calls at backend:5000
 //–––––––––––––––––––––––––––––
 const API_BASE = 'https://student-hostel-backend.onrender.com/api';
 
@@ -32,17 +32,18 @@ function authHeaders() {
   };
 }
 
-function isAuthenticated() {
-  return !!token;
-}
-
 // Redirect non-logged in users (except on login/register pages)
 document.addEventListener('DOMContentLoaded', () => {
-  const publicPaths = ['/', '/index.html'];
-  if (!token && !publicPaths.includes(location.pathname)) {
-    window.location.href = 'index.html';
+  // Redirect non-logged in users but allow any index.html path in subdirectory
+  if (!token) {
+    const path = location.pathname;
+    const isPublic = path.endsWith('/') || path.endsWith('index.html');
+    if (!isPublic) {
+      window.location.href = 'index.html';
+      return;
+    }
   }
-  // Display current user in nav
+  // display current user in nav
   const span = document.getElementById('currentUserInfo');
   if (span && currentUser) {
     span.textContent = `Logged in as: ${
@@ -55,40 +56,35 @@ document.addEventListener('DOMContentLoaded', () => {
 // AUTH: register / login / logout
 // -----------------------------------------------------------------------------
 async function register() {
-  const name = document.getElementById('name').value;
+  const name      = document.getElementById('name').value;
   const studentId = document.getElementById('studentId').value;
-  const email = document.getElementById('regEmail').value;
-  const password = document.getElementById('regPassword').value;
-  const role = document.getElementById('regRole').value;
+  const email     = document.getElementById('regEmail').value;
+  const password  = document.getElementById('regPassword').value;
+  const role      = document.getElementById('regRole').value;
 
   if (!name || !studentId || !email || !password) {
     alert("Please fill in all fields.");
     return;
   }
 
-  try {
-    const res = await fetch(`${API_BASE}/auth/register`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, studentId, email, password, role })
-    });
+  const res = await fetch(`${API_BASE}/auth/register`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, studentId, email, password, role })
+  });
 
-    if (!res.ok) {
-      const err = await res.json();
-      return alert(err.message);
-    }
+  if (!res.ok) {
+    const err = await res.json();
+    return alert(err.message);
+  }
+  const { token: tkn, user } = await res.json();
+  setAuth(user, tkn);
 
-    const { token: tkn, user } = await res.json();
-    setAuth(user, tkn);
-
-    if (user.role === 'admin') {
-      window.location.href = 'admin-applications.html';
-    } else {
-      window.location.href = 'dashboard.html';
-    }
-  } catch (e) {
-    console.error('Registration error:', e);
-    alert('Registration failed.');
+  // redirect based on role
+  if (user.role === 'admin') {
+    window.location.href = 'admin-applications.html';
+  } else {
+    window.location.href = 'dashboard.html';
   }
 }
 
@@ -98,32 +94,27 @@ function showRegister() {
 }
 
 async function login() {
-  const email = document.getElementById('email').value;
+  const email    = document.getElementById('email').value;
   const password = document.getElementById('password').value;
 
-  try {
-    const res = await fetch(`${API_BASE}/auth/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password })
-    });
+  const res = await fetch(`${API_BASE}/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password })
+  });
 
-    if (!res.ok) {
-      const err = await res.json();
-      return alert(err.message);
-    }
+  if (!res.ok) {
+    const err = await res.json();
+    return alert(err.message);
+  }
+  const { token: tkn, user } = await res.json();
+  setAuth(user, tkn);
 
-    const { token: tkn, user } = await res.json();
-    setAuth(user, tkn);
-
-    if (user.role === 'admin') {
-      window.location.href = 'admin-applications.html';
-    } else {
-      window.location.href = 'dashboard.html';
-    }
-  } catch (e) {
-    console.error('Login error:', e);
-    alert('Login failed.');
+  if (user.role === 'admin') {
+    window.location.href = 'admin-applications.html';
+  } else {
+    // always land on dashboard
+    window.location.href = 'dashboard.html';
   }
 }
 
@@ -139,51 +130,42 @@ async function loadHostelsForApply() {
   const container = document.getElementById('hostelContainer');
   if (!container) return;
 
-  try {
-    const res = await fetch(`${API_BASE}/hostels`, { headers: authHeaders() });
-    const hostels = await res.json();
-    container.innerHTML = '';
+  const res = await fetch(`${API_BASE}/hostels`, {
+    headers: authHeaders()
+  });
+  const hostels = await res.json();
+  container.innerHTML = '';
 
-    hostels.forEach(h => {
-      const isFull = h.occupancy >= h.capacity;
-      const card = document.createElement('div');
-      card.className = 'room-card';
-      card.innerHTML = `
-        <img src="${h.image}" alt="${h.name}" />
-        <h3>${h.name}</h3>
-        <p>${h.description}</p>
-        <p><strong>Type:</strong> ${h.type}</p>
-        <p><strong>Occupancy:</strong> ${h.occupancy} / ${h.capacity}</p>
-        <button ${isFull ? 'disabled' : ''} onclick="applyForRoom(${h.id})">
-          ${isFull ? 'Full' : 'Apply for this Room'}
-        </button>
-      `;
-      container.appendChild(card);
-    });
-  } catch (e) {
-    console.error('Failed to load hostels:', e);
-  }
+  hostels.forEach(h => {
+    const isFull = h.occupancy >= h.capacity;
+    const card = document.createElement('div');
+    card.className = 'room-card';
+    card.innerHTML = `
+      <img src="${h.image}" alt="${h.name}" />
+      <h3>${h.name}</h3>
+      <p>${h.description}</p>
+      <p><strong>Type:</strong> ${h.type}</p>
+      <p><strong>Occupancy:</strong> ${h.occupancy} / ${h.capacity}</p>
+      <button ${isFull? 'disabled' : ''} onclick="applyForRoom(${h.id})">
+        ${isFull ? 'Full' : 'Apply for this Room'}
+      </button>
+    `;
+    container.appendChild(card);
+  });
 }
 
 async function applyForRoom(hostelId) {
-  try {
-    const res = await fetch(`${API_BASE}/applications`, {
-      method: 'POST',
-      headers: authHeaders(),
-      body: JSON.stringify({ hostelId })
-    });
-
-    if (!res.ok) {
-      const err = await res.json();
-      return alert(err.message);
-    }
-
-    alert('Application submitted!');
-    window.location.href = 'dashboard.html';
-  } catch (e) {
-    console.error('Application error:', e);
-    alert('Failed to apply.');
+  const res = await fetch(`${API_BASE}/applications`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify({ hostelId })
+  });
+  if (!res.ok) {
+    const err = await res.json();
+    return alert(err.message);
   }
+  alert('Application submitted!');
+  window.location.href = 'dashboard.html';
 }
 
 // -----------------------------------------------------------------------------
@@ -191,47 +173,49 @@ async function applyForRoom(hostelId) {
 // -----------------------------------------------------------------------------
 async function renderStudentDashboard() {
   const nameSpan = document.getElementById('dashboardName');
-  const content = document.getElementById('dashboardContent');
+  const content  = document.getElementById('dashboardContent');
   if (!content || !currentUser) return;
 
-  try {
-    nameSpan.textContent = currentUser.name;
+  nameSpan.textContent = currentUser.name;
 
-    const res = await fetch(`${API_BASE}/applications`, { headers: authHeaders() });
-    const apps = await res.json();
+  const res = await fetch(`${API_BASE}/applications`, {
+    headers: authHeaders()
+  });
+  const apps = await res.json();
 
-    if (!apps.length) {
-      content.innerHTML = `
-        <p>You have not applied for housing yet.</p>
-        <a href="apply.html"><button>Apply Now</button></a>
-      `;
-      return;
-    }
-
-    const app = apps[0];
-    let cls = app.status.toLowerCase();
-    let html = `
-      <h3>Application Status</h3>
-      <span class="badge ${cls}">${app.status}</span>
+  if (!apps.length) {
+    content.innerHTML = `
+      <p>You have not applied for housing yet.</p>
+      <a href="apply.html"><button>Apply Now</button></a>
     `;
-
-    if (app.status === 'accepted') {
-      html += `
-        <h4>Room Assignment</h4>
-        <p><strong>Hostel:</strong> ${app.hostel}</p>
-        <p><strong>Room Type:</strong> ${app.type}</p>
-      `;
-    } else if (app.status === 'rejected') {
-      html += `
-        <p>Your application was rejected. You may reapply.</p>
-        <a href="apply.html"><button>Reapply</button></a>
-      `;
-    }
-
-    content.innerHTML = html;
-  } catch (e) {
-    console.error('Failed to load dashboard:', e);
+    return;
   }
+
+  const app = apps[0];
+  let cls = app.status.toLowerCase();
+  let html = `
+    <h3>Application Status</h3>
+    <span class="badge ${cls}">${app.status}</span>
+  `;
+
+  if (app.status === 'accepted') {
+    html += `
+      <h4>Room Assignment</h4>
+      <p><strong>Hostel:</strong> ${app.hostel}</p>
+      <p><strong>Room Type:</strong> ${app.type}</p>
+    `;
+  } else if (app.status === 'rejected') {
+    html += `
+      <p>Your application was rejected. You may reapply.</p>
+      <a href="apply.html"><button>Reapply</button></a>
+    `;
+  }
+
+  content.innerHTML = html;
+}
+
+if (document.getElementById('dashboardContent')) {
+  renderStudentDashboard();
 }
 
 // -----------------------------------------------------------------------------
@@ -239,65 +223,59 @@ async function renderStudentDashboard() {
 // -----------------------------------------------------------------------------
 async function renderAdminApplications() {
   const tableBody = document.getElementById('adminApplications');
-  const search = document.getElementById('searchInput')?.value.toLowerCase() || '';
+  const search    = document.getElementById('searchInput')?.value.toLowerCase() || '';
   if (!tableBody) return;
 
-  try {
-    const res = await fetch(`${API_BASE}/applications`, { headers: authHeaders() });
-    const apps = await res.json();
+  const res = await fetch(`${API_BASE}/applications`, {
+    headers: authHeaders()
+  });
+  const apps = await res.json();
 
-    tableBody.innerHTML = '';
-    apps
-      .filter(a => a.userEmail.toLowerCase().includes(search))
-      .forEach(app => {
-        const cls = app.status.toLowerCase();
-        const row = document.createElement('tr');
-        row.innerHTML = `
-          <td>${app.userEmail}</td>
-          <td>${app.hostel}</td>
-          <td>${app.type}</td>
-          <td><span class="badge ${cls}">${app.status}</span></td>
-          <td>
-            <button onclick="approveApp(${app.id})">Approve</button>
-            <button onclick="rejectApp(${app.id})">Reject</button>
-            <button onclick="confirmDelete(${app.id})">Delete</button>
-          </td>
-        `;
-        tableBody.appendChild(row);
-      });
-  } catch (e) {
-    console.error('Failed to load applications:', e);
-  }
+  tableBody.innerHTML = '';
+  apps
+    .filter(a => a.userEmail.toLowerCase().includes(search))
+    .forEach(app => {
+      const cls = app.status.toLowerCase();
+      const row = document.createElement('tr');
+      row.innerHTML = `
+        <td>${app.userEmail}</td>
+        <td>${app.hostel}</td>
+        <td>${app.type}</td>
+        <td><span class="badge ${cls}">${app.status}</span></td>
+        <td>
+          <button onclick="approveApp(${app.id})">Approve</button>
+          <button onclick="rejectApp(${app.id})">Reject</button>
+          <button onclick="confirmDelete(${app.id})">Delete</button>
+        </td>
+      `;
+      tableBody.appendChild(row);
+    });
 }
 
 function filterApplications() {
   renderAdminApplications();
 }
 
+if (document.getElementById('adminApplications')) {
+  renderAdminApplications();
+}
+
 async function approveApp(id) {
-  try {
-    await fetch(`${API_BASE}/applications/${id}`, {
-      method: 'PUT',
-      headers: authHeaders(),
-      body: JSON.stringify({ status: 'accepted' })
-    });
-    renderAdminApplications();
-  } catch (e) {
-    console.error('Approve error:', e);
-  }
+  await fetch(`${API_BASE}/applications/${id}`, {
+    method: 'PUT',
+    headers: authHeaders(),
+    body: JSON.stringify({ status: 'accepted' })
+  });
+  renderAdminApplications();
 }
 
 async function rejectApp(id) {
-  try {
-    await fetch(`${API_BASE}/applications/${id}`, {
-      method: 'PUT',
-      headers: authHeaders(),
-      body: JSON.stringify({ status: 'rejected' })
-    });
-    renderAdminApplications();
-  } catch (e) {
-    console.error('Reject error:', e);
-  }
+  await fetch(`${API_BASE}/applications/${id}`, {
+    method: 'PUT',
+    headers: authHeaders(),
+    body: JSON.stringify({ status: 'rejected' })
+  });
+  renderAdminApplications();
 }
 
 function confirmDelete(id) {
@@ -307,15 +285,11 @@ function confirmDelete(id) {
 }
 
 async function deleteApp(id) {
-  try {
-    await fetch(`${API_BASE}/applications/${id}`, {
-      method: 'DELETE',
-      headers: authHeaders()
-    });
-    renderAdminApplications();
-  } catch (e) {
-    console.error('Delete error:', e);
-  }
+  await fetch(`${API_BASE}/applications/${id}`, {
+    method: 'DELETE',
+    headers: authHeaders()
+  });
+  renderAdminApplications();
 }
 
 // -----------------------------------------------------------------------------
@@ -325,28 +299,24 @@ async function renderHostels() {
   const container = document.getElementById('hostelList');
   if (!container) return;
 
-  try {
-    const res = await fetch(`${API_BASE}/hostels`, { headers: authHeaders() });
-    const hostels = await res.json();
-    container.innerHTML = '';
+  const res = await fetch(`${API_BASE}/hostels`, { headers: authHeaders() });
+  const hostels = await res.json();
+  container.innerHTML = '';
 
-    hostels.forEach(h => {
-      const used = h.occupancy;
-      const card = document.createElement('div');
-      card.className = 'room-card';
-      card.innerHTML = `
-        <img src="${h.image}" alt="${h.name}" />
-        <h3>${h.name}</h3>
-        <p>${h.description}</p>
-        <p><strong>Type:</strong> ${h.type}</p>
-        <p><strong>Capacity:</strong> ${used} / ${h.capacity}</p>
-        <button onclick="deleteHostel(${h.id})">Delete</button>
-      `;
-      container.appendChild(card);
-    });
-  } catch (e) {
-    console.error('Failed to load hostels:', e);
-  }
+  hostels.forEach(h => {
+    const used = h.occupancy;
+    const card = document.createElement('div');
+    card.className = 'room-card';
+    card.innerHTML = `
+      <img src="${h.image}" alt="${h.name}" />
+      <h3>${h.name}</h3>
+      <p>${h.description}</p>
+      <p><strong>Type:</strong> ${h.type}</p>
+      <p><strong>Capacity:</strong> ${used} / ${h.capacity}</p>
+      <button onclick="deleteHostel(${h.id})">Delete</button>
+    `;
+    container.appendChild(card);
+  });
 }
 
 const hostelForm = document.getElementById('hostelForm');
@@ -354,54 +324,38 @@ if (hostelForm) {
   hostelForm.addEventListener('submit', async e => {
     e.preventDefault();
     const payload = {
-      name: document.getElementById('hostelName').value,
+      name:        document.getElementById('hostelName').value,
       description: document.getElementById('hostelDesc').value,
-      image: document.getElementById('hostelImage').value,
-      type: document.getElementById('hostelType').value,
-      capacity: parseInt(document.getElementById('hostelCap').value, 10)
+      image:       document.getElementById('hostelImage').value,
+      type:        document.getElementById('hostelType').value,
+      capacity:    parseInt(document.getElementById('hostelCap').value, 10)
     };
-    try {
-      await fetch(`${API_BASE}/hostels`, {
-        method: 'POST',
-        headers: authHeaders(),
-        body: JSON.stringify(payload)
-      });
-      hostelForm.reset();
-      renderHostels();
-    } catch (e) {
-      console.error('Failed to create hostel:', e);
-    }
+    await fetch(`${API_BASE}/hostels`, {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify(payload)
+    });
+    hostelForm.reset();
+    renderHostels();
   });
 }
 
 async function deleteHostel(id) {
   if (!confirm('Delete this hostel?')) return;
-  try {
-    await fetch(`${API_BASE}/hostels/${id}`, {
-      method: 'DELETE',
-      headers: authHeaders()
-    });
-    renderHostels();
-  } catch (e) {
-    console.error('Failed to delete hostel:', e);
-  }
-}
-
-// -----------------------------------------------------------------------------
-// PAGE‐SPECIFIC INIT
-// -----------------------------------------------------------------------------
-if (document.getElementById('dashboardContent') && isAuthenticated()) {
-  renderStudentDashboard();
-}
-
-if (document.getElementById('adminApplications') && isAuthenticated()) {
-  renderAdminApplications();
-}
-
-if (document.getElementById('hostelList') && isAuthenticated()) {
+  await fetch(`${API_BASE}/hostels/${id}`, {
+    method: 'DELETE',
+    headers: authHeaders()
+  });
   renderHostels();
 }
 
-if (document.getElementById('hostelContainer') && isAuthenticated()) {
+if (document.getElementById('hostelList')) {
+  renderHostels();
+}
+
+// -----------------------------------------------------------------------------
+// PAGE‐SPECIFIC: load hostels on apply.html
+// -----------------------------------------------------------------------------
+if (document.getElementById('hostelContainer')) {
   loadHostelsForApply();
 }
