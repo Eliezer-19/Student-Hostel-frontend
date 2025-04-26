@@ -3,7 +3,7 @@
 //–––––––––––––––––––––––––––––
 // point all API calls at backend:5000
 //–––––––––––––––––––––––––––––
-const API_BASE = 'https://student-housing-backend.onrender.com/api';
+const API_BASE = 'https://student-hostel-backend.onrender.com/api';
 
 // -----------------------------------------------------------------------------
 // Auth helpers
