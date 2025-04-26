@@ -34,9 +34,14 @@ function authHeaders() {
 
 // Redirect non-logged in users (except on login/register pages)
 document.addEventListener('DOMContentLoaded', () => {
-  const publicPaths = ['/', '/index.html'];
-  if (!token && !publicPaths.includes(location.pathname)) {
-    window.location.href = 'index.html';
+  // Redirect non-logged in users but allow any index.html path in subdirectory
+  if (!token) {
+    const path = location.pathname;
+    const isPublic = path.endsWith('/') || path.endsWith('index.html');
+    if (!isPublic) {
+      window.location.href = 'index.html';
+      return;
+    }
   }
   // display current user in nav
   const span = document.getElementById('currentUserInfo');
