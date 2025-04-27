@@ -1,7 +1,4 @@
-// frontend/javascript/script.js
-
-//–––––––––––––––––––––––––––––
-// point all API calls at backend:5000
+// API URL
 //–––––––––––––––––––––––––––––
 const API_BASE = 'https://student-hostel-backend.onrender.com/api';
 
@@ -32,9 +29,8 @@ function authHeaders() {
   };
 }
 
-// Redirect non-logged in users (except on login/register pages)
+// Redirect non-logged in users
 document.addEventListener('DOMContentLoaded', () => {
-  // Redirect non-logged in users but allow any index.html path in subdirectory
   if (!token) {
     const path = location.pathname;
     const isPublic = path.endsWith('/') || path.endsWith('index.html');
@@ -95,9 +91,7 @@ function showRegister() {
 
 // Function to toggle back to the login form
 function showLogin() {
-  // Show the login container
   document.querySelector('.form-container').style.display = 'block';
-  // Hide the register container
   document.getElementById('register-form').classList.add('hidden');
 }
 
@@ -121,7 +115,6 @@ async function login() {
   if (user.role === 'admin') {
     window.location.href = 'admin-applications.html';
   } else {
-    // always land on dashboard
     window.location.href = 'dashboard.html';
   }
 }
@@ -362,7 +355,7 @@ if (document.getElementById('hostelList')) {
 }
 
 // -----------------------------------------------------------------------------
-// PAGE‐SPECIFIC: load hostels on apply.html
+// Load hostels on apply.html
 // -----------------------------------------------------------------------------
 if (document.getElementById('hostelContainer')) {
   loadHostelsForApply();
