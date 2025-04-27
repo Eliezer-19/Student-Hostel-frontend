@@ -4,7 +4,7 @@
 A web-based student housing portal that allows students to register, log in, view available hostels, and apply for rooms. Administrators can manage hostel listings and review or update housing applications.
 
 ## Deployment Links
-- Frontend: https://student-hostel-frontend.onrender.com
+- Frontend: https://student-hostel-frontend.onrender.com , https://eliezer-19.github.io/Student-Hostel-frontend/
 - Backend: https://student-hostel-backend.onrender.com
 
 ## Login Details
@@ -25,6 +25,7 @@ To create a new account, use the **Register** option on the login page.
 - [✅] Admin Hostel Management (Add / Delete)
 - [✅] PostgreSQL Database Integration
 - [✅] Deployment on Render (Frontend & Backend)
+- [✅] Deployment on Git pages (Frontend)
 
 
 ## Installation Instructions
