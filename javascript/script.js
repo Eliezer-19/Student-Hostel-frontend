@@ -93,6 +93,14 @@ function showRegister() {
   document.getElementById('register-form').classList.remove('hidden');
 }
 
+// Function to toggle back to the login form
+function showLogin() {
+  // Show the login container
+  document.querySelector('.form-container').style.display = 'block';
+  // Hide the register container
+  document.getElementById('register-form').classList.add('hidden');
+}
+
 async function login() {
   const email    = document.getElementById('email').value;
   const password = document.getElementById('password').value;
